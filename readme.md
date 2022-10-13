@@ -5,6 +5,7 @@ Author: frothkoetter
 
 ![](IMAGES/image1.png)
 
+### What the demo shows:
 
 * Generate and Ingest Tower Events for GSM, UMTS and LTE
 * Add the score form ML Model API 
@@ -15,7 +16,7 @@ Author: frothkoetter
 * Visualize the data in a map
 * Data Partitioning with with Iceberg and job management
 
-Need DataHub Cluster: NIFI, KAFKA and FLINK and Kudu
+Requirement CDP PC DataHub Cluster: NIFI, KAFKA and FLINK and Kudu
 
 ![](IMAGES/image2.png)
 
@@ -25,15 +26,17 @@ Data Services: CML, CDE, CDW and CDF
 
 
 ## Configure Nifi for DataGeneration and Routing
-Figure: the full flow 
+
+The Nifi flow in the UI 
+
 ![](IMAGES/image3.png)
 
-Upoad the FlowFile: HubDevDemo.json as template an import
+Upoad the FlowFile: `HubDevDemo.json` as template an import
 (not using of FlowRegistry) 
 
-Need to confiure processors 
+Confiure processors 
 
-S3Put - with Bucket location and AWS credentials 
+`PutS3Object` - with Bucket location and AWS credentials 
 
 ![](IMAGES/image4.png)
 
@@ -41,22 +44,29 @@ Create in AWS the directory and check later that data is stored in the location.
 
 ![](IMAGES/image5.png)
 
-Configure the two putKafka procesors Broker and Topic
+Configure the two `PublishKafka2CDP_fraud` and `PublishKafka2CDP_json`  procesors Broker and Topic
+
 ![](IMAGES/image7.png)
 
 and user/pwd - use CDP workloaduser and pwd
+
 ![](IMAGES/image8.png)
 
+Check the SSL services running. 
 
 
 ## Telco tower event generator
 
-Copy or clone this repo to your local machine and scp  to a NIFI worker node
+Copy or clone the repo to your local machine and `scp` to a NIFI worker node
 
 `scp -r ./* frothkoetter@telco-demo-streaming-nifi-nifi0.se-sandb.a465-9q4k.cloudera.site:/home/frothkoetter
 `
+Login to the NIFI worker Node you copied the repo
 
-Install python lib on the worker node you connected: 
+`ssh frothkoetter@telco-demo-streaming-nifi-nifi0.se-sandb.a465-9q4k.cloudera.site
+`
+
+Install python lib on the NIFI worker you connected: 
 
 ```
 pip3 install faker
@@ -86,12 +96,11 @@ done
 ```
 This configuration generates approx 2000 events/minute 
 
-Startup:  
+Startup: 
+ 
 `nohup ./gen.sh | nc telco-demo-events-nifi2 31888 & `
 
-The events are send into a linux pipe on port 31888, that Nifi listen to. 
-
-Check events coming in Nifi UI 
+The events are send into a linux pipe on port 31888, that NIFI is listening to. Check events coming in Nifi UI 
 
 ![](IMAGES/image6.png)
 
@@ -108,8 +117,6 @@ telco_tower_events_scored_json
 Watch events coming into topics and recordconverter writing to the Kafka topics.
 
 (check that the first character of the payload is NOT a [ : if yes then the NIFI RecordConverter JsonRecordWriter Service need to be configured correct) 
-
-This is the correct JSON payload
 
 ## Configure SQL Streams Builder (SSB) 
 
