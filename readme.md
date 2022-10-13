@@ -12,8 +12,8 @@ Author: frothkoetter
 * Route Events to a fraud topic 
 * Convert raw events into JSON format and move to _json Topic
 * Move raw data to Cloud Storage 
-* Continues Query, aggregations and Join static with stream
-* Visualize the data in a map
+* Continues Query, aggregations and join static data from Kudu with streaming events
+* Visualize the events in a map
 * Data Partitioning with with Iceberg and job management
 
 Requirement CDP PC DataHub Cluster: NIFI, KAFKA and FLINK and Kudu
