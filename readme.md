@@ -620,6 +620,7 @@ The report should look like this:
 
 ## Data Service Data Engineering
 
+This step will automate the 
 Create a small virtual Cluster and download or update cde cli executeable and configuration on your local machine
 
 `vi ~/.cde/config.yaml `
