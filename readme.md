@@ -69,7 +69,7 @@ Unzip cell-tower.csv
 
 ` gunzip cell-tower.csv.gz`
 
-Adjust gen.sh to your location and datasets of cell-towers. 
+Adjust `gen.sh` script to your location and datasets of cell-towers. 
 
 ```
 #!/bin/sh
@@ -84,13 +84,14 @@ do
  sleep 50
 done
 ```
-
+This configuration generates approx 2000 events/minute 
 
 Startup:  
 `nohup ./gen.sh | nc telco-demo-events-nifi2 31888 & `
 
+The events are send into a linux pipe on port 31888, that Nifi listen to. 
 
-Check events coming in Nifi on UI 
+Check events coming in Nifi UI 
 
 ![](IMAGES/image6.png)
 
