@@ -50,6 +50,14 @@ Create in AWS the directory and check later that data is stored in the location.
 
 ![](IMAGES/image5.png)
 
+Configure the two putKafka procesors Broker and Topic
+![](IMAGES/image7.png)
+
+and user/pwd - use CDP workloaduser and pwd
+![](IMAGES/image8.png)
+
+
+
 ## Telco Demo Tower event generator
 
 Copy or clone this repo to your local machine and scp  to a NIFI worker node
@@ -59,17 +67,21 @@ Copy or clone this repo to your local machine and scp  to a NIFI worker node
 
 Install python lib on the worker node you connected: 
 
-`pip3 install faker`
+```
+pip3 install faker
+pip3 install psutils
+pip3 install numpy
+pip3 install pandas
+```
 
-`pip3 install psutils`
+Unzip cell-tower.csv 
 
-`pip3 install numpy`
-
-`pip3 install pandas`
+` gunzip cell-tower.csv.gz`
 
 Adjust gen.sh to your location and datasets of cell-towers. 
 
-!/bin/sh
+```
+#!/bin/sh
 
 host=telco-demo-events-nifi2
 
@@ -80,14 +92,34 @@ do
  python3 gen-events.py -nc 1 -iso 'be' -state 'Antwerp' -r 'GSM' -ne 600 -nd '1m' -f 'cell-tower.csv'
  sleep 50
 done
+```
 
 
+Startup:  
+`nohup ./gen.sh | nc telco-demo-events-nifi2 31888 & `
 
-Startup:  nohup ./gen.sh | nc telco-demo-events-nifi2 31888 & 
-
-(telco-demo-events-nifi2 thats the local node you ssh to)!
 
 Check events coming in Nifi on UI 
+
+![](IMAGES/image6.png)
+
+## Prepare Messaging (Kafka) Cluster
+
+Go to SMM and create topics (delete policy)
+
+```
+telco_tower_events_json
+telco_tower_events_5min_json 
+telco_tower_events_scored_json
+```
+
+Watch events coming into topics and recordconverter writing to the Kafka topics.
+
+(check that the first character of the payload is NOT a [ : if yes then the NIFI RecordConverter JsonRecordWriter Service need to be configured correct) 
+
+This is the correct JSON payload
+
+
 
 
 
