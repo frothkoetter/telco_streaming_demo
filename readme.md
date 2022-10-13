@@ -49,7 +49,7 @@ and user/pwd - use CDP workloaduser and pwd
 
 
 
-## Telco Demo Tower event generator
+## Telco tower event generator
 
 Copy or clone this repo to your local machine and scp  to a NIFI worker node
 
@@ -300,15 +300,16 @@ group by radio,net,area,drop_call,
 
 ## Adding KUDU table to SSB
 Allow Ranger Permissions on KUDU (add user to the allow)
+![](IMAGES/image15.png)
 
-Upload the mcc_mnc_international.parq to the S3 location.
-i.e. 
+Upload the file `mcc_mnc_international.parq` to the S3 location.
+
 `/goes-se-sandbox01/telco-demo/mcc_mnc_international/mcc_mnc_international.parq`
 
-Go to Kudu Hue and create a table: 
+Go to Kudu HUE and create a table: 
 
 ```JSON 
-drop table if exists mcc_mnc_international;
+DROP TABLE if exists mcc_mnc_international;
 CREATE EXTERNAL TABLE mcc_mnc_international (
 mcc INT,
 mcc_int INT,
@@ -322,10 +323,13 @@ networks STRING
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 LOCATION 's3a://goes-se-sandbox01/telco-demo/mcc_mnc_international';
 ```
+Check you can access and get results
 
 ```
 select * from mcc_mnc_international;
 ```
+
+Create the Kudu table and check that data is available
 
 ```JSON
 Drop table if exists mcc_mnc_international_kudu;
@@ -346,8 +350,27 @@ from mcc_mnc_international;
 select * from mcc_mnc_international_kudu
 ```
 
+Go back to SSB Console and add KUDU to the Catalog 
+
+![](IMAGES/image16.png)
+
+If connection is working the KUDU tables can be added
+
+![](IMAGES/image18.png)
+
+You can check that in the console table view
+
+![](IMAGES/image17.png)
+
+Now you ready to access the KUDU table in SSB.
 
 ### Query 3 - join two tables 
+
+![](IMAGES/image19.png)
+
+
+Go to SSB console and run the SQL command 
+ 
 ```
 select A.mcc, B.mmc, A.mnc, B.net, B.radio, A.networks, B.event_id, B.up_time
 from `telco_demo_kudu`.`default_database`.`default.mcc_mnc_international_kudu` A
@@ -356,6 +379,7 @@ where
  A.mcc = cast( B.mmc as int) and
  A.mnc = cast( B.net as int) 
 ```
+### Results 
 
 `mcc
 mmc
@@ -426,6 +450,8 @@ group by
  TUMBLE( B.eventTimestamp, INTERVAL '15' MINUTE)
 ```
 
+### Results
+
 `
 window_end_timestamp
 networks
@@ -452,10 +478,278 @@ EXPR$2
 
 
 
+## Virtual Warehouse and Data Visualization
+
+Create a xsmall Hive CDW on the Environment, open Hue
+
+Create a database:  `telco_demo_streaming`
+
+Create external table:
+
+```SQL
+drop table if exists event_cell_towers;
+CREATE EXTERNAL TABLE IF NOT EXISTS event_cell_towers (
+event_id STRING COMMENT 'cell tower uniq event id',
+imsi BIGINT COMMENT 'international mobile subscriber identity',
+start_time TIMESTAMP COMMENT 'event captured start time' ,
+up_time INT COMMENT 'event up time in second', 
+cell_id  INT COMMENT 'cell Tower uniq_id',
+disconnect BOOLEAN COMMENT '1=event triggered a disconnect 0=event lost',
+drop_call BOOLEAN  COMMENT '1=call dropped from tower 0=call terminated/transfered',
+radio STRING COMMENT 'The generation of broadband cellular network technology',
+mcc INT COMMENT 'Mobile Country Code',
+net INT COMMENT 'Network',
+area INT,
+lon DOUBLE COMMENT 'longitude coordinate',
+lat DOUBLE COMMENT 'latitude coordinate'
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+LOCATION '/telco-demo/tower-events-csv'
+;
+```
+
+Check you have have access and data available
+
+```SQL
+select * FROM event_cell_towers limit 10;
+```
+
+Create an table in iceberg table format and partitioned by a day
+
+```SQL
+create table event_cell_towers_ice (
+ event_id STRING COMMENT 'cell tower uniq event id',
+imsi BIGINT COMMENT 'international mobile subscriber identity',
+start_time TIMESTAMP COMMENT 'event captured start time' ,
+up_time INT COMMENT 'event up time in second', 
+cell_id  INT COMMENT 'cell Tower uniq_id',
+disconnect BOOLEAN COMMENT '1=event triggered a disconnect 0=event lost',
+drop_call BOOLEAN  COMMENT '1=call dropped from tower 0=call terminated/transfered',
+radio STRING COMMENT 'The generation of broadband cellular network technology',
+mcc INT COMMENT 'Mobile Country Code',
+net INT COMMENT 'Network',
+area INT,
+lon DOUBLE COMMENT 'longitude coordinate',
+lat DOUBLE COMMENT 'latitude coordinate'
+) partitioned by (tag bigint) 
+stored by iceberg;
+```
+
+Start the initial insert: 
+
+```SQL
+insert into event_cell_towers_ice
+select 
+event_id,
+imsi,
+start_time ,
+up_time , 
+cell_id ,
+disconnect ,
+drop_call,
+radio ,
+mcc ,
+net,
+area ,
+lon,
+lat,
+cast(from_unixtime(unix_timestamp(start_time),'yyyyMMdd') as bigint) as tag
+from event_cell_towers
+where event_id <> 'event_id';
+```
 
 
+Wait a few minutes and alter the partition schema and run the next INSERT.
+
+```SQL
+ALTER TABLE event_cell_towers_ice 
+ SET PARTITION SPEC(tag, hours(start_time) );
+```
 
 
+```SQL
+insert into event_cell_towers_ice
+select 
+event_id,
+imsi,
+start_time ,
+up_time , 
+cell_id ,
+disconnect ,
+drop_call,
+radio ,
+mcc ,
+net,
+area ,
+lon,
+lat,
+cast(from_unixtime(unix_timestamp(start_time),'yyyyMMdd') as bigint) as tag
+from event_cell_towers
+where event_id <> 'event_id'
+and start_time > (select max(start_time) from event_cell_towers_ice);
+```
+
+Check the snapshots
+
+```SQL
+select * from telco_demo_streaming.event_cell_towers_ice.history;
+```
+
+Check the number of files
+
+```SQL
+describe formatted event_cell_towers_ice
+```
+
+## Data Vizualisation 
+
+
+Create a token at MapBox.com (free of charge)
+
+![](IMAGES/image20.png)
+
+Copy the token
+
+Create in CDW a DataViz instance and open DataViz application
+
+Paste the MapBox token into the site settings and scrol down: 
+
+![](IMAGES/image21.png)
+
+Save the configuration and add a connection to the CDW virtual warehouse add the data source for the table `telco_demo_streaming.event_cell_towers_ice` and create a visual fir an interactive map . here with geo - locations 
+
+![](IMAGES/image22.png)
+
+The report should look like this:
+
+![](IMAGES/image23.png)
+
+## Data Service Data Engineering
+
+Create a small virtual Cluster and download or update cde cli executeable and configuration on your local machine
+
+`vi ~/.cde/config.yaml `
+
+set the CDE cluster endpoint (copy from CDE UI) 
+
+```
+user: frothkoetter 
+vcluster-endpoint: https://jn9mlf2v.cde-t7w5wnhc.se-sandb.a465-9q4k.cloudera.site/dex/api/v1 
+```
+
+Add cdw connection to Airflow - Virtual Cluster UI - Airflow UI 
+
+
+![](IMAGES/image25.png)
+
+Enter the required settings for the connection configuration i.e. 
+
+![](IMAGES/image26.png)
+
+On your local machinge create Airflow DAG file: `cdw-ice-dag.py`
+
+```
+from airflow import DAG
+from datetime import datetime, timedelta
+from cloudera.cdp.airflow.operators.cdw_operator import CDWOperator
+from cloudera.cdp.airflow.operators.cde_operator import CDEJobRunOperator
+from airflow.operators.dummy_operator import DummyOperator
+
+default_args = {
+    'owner': 'frothkoetter',
+    'depends_on_past': False,
+    'email': ['frothkoetter@cloudera.com'],
+    'start_date': datetime(2021,1,1,1),
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 0,
+    'retry_delay': timedelta(minutes=5)
+}
+
+dag = DAG(
+    'cdw-ice-dag', default_args=default_args, catchup=False, schedule_interval="0,10,20,30,40,50 * * * *", is_paused_upon_creation=False)
+
+vw_pre_check = """
+select max(start_time) from dtag_demo.event_cell_towers_ice;
+select * from dtag_demo.event_cell_towers_ice.history;
+"""
+
+vw_upsert = """
+insert into dtag_demo.event_cell_towers_ice
+select event_id, imsi, start_time , up_time , cell_id , disconnect , drop_call, radio , mcc , net, area , lon, lat, cast(from_unixtime(unix_timestamp(start_time),'yyyyMMdd') as bigint) as tag
+ from dtag_demo.event_cell_towers
+ where event_id <> 'event_id'
+and start_time > (select max(start_time) from dtag_demo.event_cell_towers_ice);
+"""
+
+vw_post_check = """
+select max(start_time) from dtag_demo.event_cell_towers_ice;
+select * from dtag_demo.event_cell_towers_ice.history;
+"""
+
+start = DummyOperator(task_id='start', dag=dag)
+
+cdw_cleanup = CDWOperator(
+    task_id='cdw-cleanup',
+    dag=dag,
+    cli_conn_id='cdw',
+    hql=vw_pre_check,
+    schema='dtag_demo',
+    use_proxy_user=False,
+    query_isolation=True
+
+)
+
+cdw_upsert = CDWOperator(
+    task_id='cdw-upsert',
+    dag=dag,
+    cli_conn_id='cdw',
+    hql=vw_upsert,
+    schema='dtag_demo',
+    use_proxy_user=False,
+    query_isolation=True
+
+)
+
+cdw_post = CDWOperator(
+    task_id='cdw-post',
+    dag=dag,
+    cli_conn_id='cdw',
+    hql=vw_post_check,
+    schema='dtag_demo',
+    use_proxy_user=False,
+    query_isolation=True
+
+)
+end = DummyOperator(task_id='end', dag=dag)
+
+start >> cdw_cleanup >> cdw_upsert >>  cdw_post >> end
+```
+
+
+Run the following CMDs from the CDE CLI
+ 
+```sh
+./cde resource create --name cdw-ice-dag
+```
+(note: first time you will be promted to enter the workload password)
+
+```sh
+./cde resource upload --name cdw-ice-dag --local-path cdw-ice-dag.py
+```
+
+```sh
+./cde job create --name cdw-ice-dag-job --type airflow --dag-file cdw-ice-dag.py  --mount-1-resource cdw-ice-dag 
+```
+
+Check in CDE virtual cluster UI that the Job is created and started, … 
+
+![](IMAGES/image29.png)
+
+
+The job will runtime is approx 2 minutes and is scheduled to run every 10 minutes. 
+
+ 
 
 
 
