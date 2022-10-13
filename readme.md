@@ -154,7 +154,7 @@ You should see the column definition in the left window
 
 ### Query 1 - events grouped by network and dropped call over a tumbling window
 
-```
+```SQL
 select 
  radio,
  drop_call, 
@@ -213,7 +213,7 @@ Results
 
 ### Query 2: IMSI with >= 10 Dropped Calls over a SLIDING window  
 
-```
+```SQL
 select cast( HOP_END( A.eventTimestamp, INTERVAL '5' MINUTE, INTERVAL '15' MINUTES)  as VARCHAR) AS window_end_timestamp ,
    A.imsi, count(* )as dropped_calls 
 from  `ssb`.`ssb_default`.`telco_tower_events` A
@@ -285,7 +285,7 @@ Create a table telco_tower_events_5min_json
 
 Enter in the console window:
 
-```JSON
+```SQL
 insert into telco_tower_events_5min_json 
 select 
  cast( TUMBLE_END( eventTimestamp, INTERVAL '15' MINUTE) as VARCHAR) AS window_end_timestamp ,
@@ -308,7 +308,7 @@ Upload the file `mcc_mnc_international.parq` to the S3 location.
 
 Go to Kudu HUE and create a table: 
 
-```JSON 
+```SQL 
 DROP TABLE if exists mcc_mnc_international;
 CREATE EXTERNAL TABLE mcc_mnc_international (
 mcc INT,
@@ -325,13 +325,13 @@ LOCATION 's3a://goes-se-sandbox01/telco-demo/mcc_mnc_international';
 ```
 Check you can access and get results
 
-```
+```SQL
 select * from mcc_mnc_international;
 ```
 
 Create the Kudu table and check that data is available
 
-```JSON
+```SQL
 Drop table if exists mcc_mnc_international_kudu;
 create table mcc_mnc_international_kudu (
 mcc INT,
@@ -371,7 +371,7 @@ Now you ready to access the KUDU table in SSB.
 
 Go to SSB console and run the SQL command 
  
-```
+```SQL
 select A.mcc, B.mmc, A.mnc, B.net, B.radio, A.networks, B.event_id, B.up_time
 from `telco_demo_kudu`.`default_database`.`default.mcc_mnc_international_kudu` A
 , `ssb`.`ssb_default`.`telco_tower_events` B
@@ -390,20 +390,6 @@ networks
 event_id
 up_time
 `
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -437,7 +423,7 @@ up_time
 
 ### Query 4 - Join two tables over a tumbling window
 
-```
+```SQL
 select cast( TUMBLE_END( B.eventTimestamp, INTERVAL '15' MINUTE) as VARCHAR) AS window_end_timestamp ,
    A.networks, sum(cast( B.up_time as int) ) 
 from `telco_demo_kudu`.`default_database`.`default.mcc_mnc_international_kudu` A
