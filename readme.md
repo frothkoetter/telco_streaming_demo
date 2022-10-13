@@ -23,15 +23,6 @@ Creation takes approximately 2 Hrs. - shutdown daily and startup time is approx 
 
 Data Services: CML, CDE, CDW and CDF 
 
-Cost  awareness: 
-Running these three DataHub Cluster for 8 hrs are: 120 USD approx
-
-* Streaming Analytics (Light Duty): 37 USD
-* Streams Messaging (Light Duty): 26 USD
-* Flow Management (Light Duty): 14 USD
-* Kudu Realtime Analyse : 43 USD
-* CDW - Hive / Impala virtual Warehouse:
-* CML - workspace:  
 
 ## Configure Nifi for DataGeneration and Routing
 Figure: the full flow 
