@@ -70,7 +70,7 @@ Install python lib on the NIFI worker you connected:
 
 ```
 pip3 install faker
-pip3 install psutils
+pip3 install psutil
 pip3 install numpy
 pip3 install pandas
 ```

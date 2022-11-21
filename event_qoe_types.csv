@@ -1,0 +1,8 @@
+﻿event_code,severity,type,test_type,failure_cause
+1001,critical,CALL,callTest Failed,DROPPED
+1002,critical,CALL,callTest Failed,CALL_SETUP_FAILURE
+1003,critical,LOGIN,uploadTest Failed,login failed:530 login inorrect
+1004,critical,LOGIN,downloadTest Failed,login failed:530 login inorrect
+1005,critical,LOGIN,HttpDownloadTest Failed,unable to resolve host 
+2001,major,LOGIN,pingTest Failed,ping: unknown host
+2002,major,CALL,sending SmsTestFailed,Generic failure
